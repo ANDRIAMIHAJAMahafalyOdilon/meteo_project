@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+{% load static %}
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titre %}Application Météo{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'meteo/css/style.css' %}">
+</head>
+<body>
+    <nav class="navbar">
+        <a href="{% url 'index' %}" class="logo">
+            <span class="logo-badge">☀️</span>
+            Météo
+        </a>
+        <div class="nav-links">
+            <a href="{% url 'index' %}" {% if request.resolver_match.url_name == 'index' %}class="active"{% endif %}>
+                Accueil
+            </a>
+            <a href="{% url 'historique' %}" {% if request.resolver_match.url_name == 'historique' %}class="active"{% endif %}>
+                Historique
+            </a>
+        </div>
+    </nav>
+
+    <main class="conteneur">
+        {% block contenu %}{% endblock %}
+    </main>
+
+
+</body>
+</html>

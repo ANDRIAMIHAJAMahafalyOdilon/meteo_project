@@ -1,0 +1,69 @@
+{% extends "meteo/base.html" %}
+
+{% block titre %}Accueil — MétéoApp{% endblock %}
+
+{% block contenu %}
+    <h1>Quelle est la météo aujourd'hui ?</h1>
+    <p class="page-subtitle">Entrez une ville pour obtenir les conditions actuelles et les prévisions</p>
+
+    <div class="search-wrapper">
+        <form method="post" class="formulaire-recherche">
+            {% csrf_token %}
+            <input
+                type="text"
+                name="ville"
+                placeholder="Ex : Antananarivo, Paris, Tokyo…"
+                value="{{ request.POST.ville }}"
+                autocomplete="off"
+                required
+            >
+            <button type="submit">
+                🔍 Rechercher
+            </button>
+        </form>
+    </div>
+
+    {% if erreur %}
+        <div class="alert alert-destructive">
+            <span class="alert-icon">⚠️</span>
+            <span>{{ erreur }}</span>
+        </div>
+    {% endif %}
+
+    {% if meteo %}
+        <section class="carte-meteo">
+            <div class="meteo-location">
+                <h2>{{ meteo.ville }}</h2>
+                <span class="badge badge-secondary">{{ meteo.pays }}</span>
+            </div>
+
+            <div class="meteo-icon-wrap">
+                <img src="{{ meteo.icone_url }}" alt="{{ meteo.description }}">
+            </div>
+
+            <p class="temperature">{{ meteo.temperature }}°<small style="font-size:1.5rem;font-weight:600;">C</small></p>
+            <p class="description">{{ meteo.description }}</p>
+
+            <ul class="details">
+                <li>💧 Humidité &nbsp;<strong>{{ meteo.humidite }} %</strong></li>
+                <li>💨 Vent &nbsp;<strong>{{ meteo.vent }} km/h</strong></li>
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if previsions %}
+        <section class="previsions">
+            <div class="section-label">Prévisions sur 3 jours</div>
+            <div class="previsions-liste">
+                {% for jour in previsions %}
+                    <div class="prevision-jour">
+                        <p>{{ jour.date }}</p>
+                        <img src="{{ jour.icone_url }}" alt="{{ jour.description }}">
+                        <p class="temp-range">{{ jour.temp_min }}° / {{ jour.temp_max }}°</p>
+                        <p class="petit">{{ jour.description }}</p>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

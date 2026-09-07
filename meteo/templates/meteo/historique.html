@@ -1,0 +1,51 @@
+{% extends "meteo/base.html" %}
+
+{% block titre %}Historique — MétéoApp{% endblock %}
+
+{% block contenu %}
+    <h1>Historique des recherches</h1>
+    <p class="page-subtitle">Vos {{ recherches|length }} dernières recherches météo</p>
+
+    {% if recherches %}
+        <div class="historique-header">
+            <span class="section-label" style="margin:0;flex:unset;">Résultats récents</span>
+            <span class="record-count">{{ recherches|length }} entrée{% if recherches|length > 1 %}s{% endif %}</span>
+        </div>
+
+        <div class="table-wrapper">
+            <table class="tableau-historique">
+                <thead>
+                    <tr>
+                        <th>Ville</th>
+                        <th>Pays</th>
+                        <th>Temp.</th>
+                        <th>Conditions</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in recherches %}
+                        <tr>
+                            <td>
+                                <strong>{{ r.ville }}</strong>
+                            </td>
+                            <td>{{ r.pays }}</td>
+                            <td class="temp-cell">{{ r.temperature }} °C</td>
+                            <td>{{ r.description }}</td>
+                            <td class="date-cell">{{ r.date_recherche|date:"d/m/Y H:i" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="empty-state-icon">🌤️</span>
+            <h2>Aucune recherche pour le moment</h2>
+            <p>Lancez votre première recherche pour voir l'historique apparaître ici.</p>
+            <a href="{% url 'index' %}" class="btn btn-primary">
+                🔍 Rechercher une ville
+            </a>
+        </div>
+    {% endif %}
+{% endblock %}
