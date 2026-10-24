@@ -7,6 +7,7 @@ import requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from django.conf import settings
+from django.core.cache import cache
 
 
 class VilleIntrouvableError(Exception):
@@ -28,28 +29,54 @@ class WeatherService:
     def __init__(self, api_key: str = None):
         self.api_key = api_key or settings.WEATHER_API_KEY
 
+    @staticmethod
+    def _quota_depasse(response) -> bool:
+        """Repère une limite de requêtes même si le fournisseur ne renvoie pas 429."""
+        texte = response.text.casefold()
+        return response.status_code == 429 or any(
+            indice in texte
+            for indice in (
+                "daily api request limit exceeded",
+                "daily request limit exceeded",
+                "request limit exceeded",
+                "rate limit exceeded",
+            )
+        )
+
     def get_meteo_actuelle(self, ville: str) -> dict:
         """Récupère la météo actuelle avec un fournisseur de secours."""
+        cache_key = f"meteo-actuelle:{ville.strip().casefold()}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
         if not self.api_key:
-            return self._get_meteo_open_meteo(ville)
+            meteo = self._get_meteo_open_meteo(ville)
+            cache.set(cache_key, meteo, timeout=900)
+            return meteo
 
         url = f"{BASE_URL}/current.json"
         params = {"key": self.api_key, "q": ville, "lang": "fr"}
         try:
             response = requests.get(url, params=params, timeout=5)
         except requests.exceptions.RequestException:
-            return self._get_meteo_open_meteo(ville)
+            meteo = self._get_meteo_open_meteo(ville)
+            cache.set(cache_key, meteo, timeout=900)
+            return meteo
 
-        if response.status_code == 400:
+        if response.status_code == 400 and not self._quota_depasse(response):
             raise VilleIntrouvableError(f"Ville introuvable : {ville}")
-        if response.status_code == 429 or response.status_code >= 500:
-            return self._get_meteo_open_meteo(ville)
+        if self._quota_depasse(response) or response.status_code >= 500:
+            meteo = self._get_meteo_open_meteo(ville)
+            cache.set(cache_key, meteo, timeout=900)
+            return meteo
         if response.status_code != 200:
             raise WeatherServiceError(
                 f"Erreur API ({response.status_code}) : {response.text}"
             )
 
-        return self._formater_reponse(response.json())
+        meteo = self._formater_reponse(response.json())
+        cache.set(cache_key, meteo, timeout=900)
+        return meteo
 
     def _get_meteo_open_meteo(self, ville: str) -> dict:
         """Utilise Open-Meteo si WeatherAPI est indisponible ou non configurée."""
@@ -101,6 +128,11 @@ class WeatherService:
 
     def get_previsions(self, latitude: float, longitude: float, timezone: str, jours: int = 7) -> dict:
         """Récupère les prévisions horaires et journalières sur sept jours."""
+        cache_key = f"meteo-previsions:{latitude:.3f}:{longitude:.3f}:{timezone or 'auto'}"
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
         url = "https://api.open-meteo.com/v1/forecast"
         params = {
             "latitude": latitude,
@@ -113,9 +145,15 @@ class WeatherService:
 
         try:
             response = requests.get(url, params=params, timeout=8)
-        except requests.exceptions.RequestException as exc:
-            raise WeatherServiceError(f"Erreur réseau : {exc}") from exc
+        except requests.exceptions.RequestException:
+            fallback = self._get_previsions_weatherapi(latitude, longitude, timezone, jours)
+            cache.set(cache_key, fallback, timeout=1800)
+            return fallback
 
+        if self._quota_depasse(response) or response.status_code >= 500:
+            fallback = self._get_previsions_weatherapi(latitude, longitude, timezone, jours)
+            cache.set(cache_key, fallback, timeout=1800)
+            return fallback
         if response.status_code != 200:
             raise WeatherServiceError(
                 f"Erreur API ({response.status_code}) : {response.text}"
@@ -150,7 +188,81 @@ class WeatherService:
                         "icone": icone,
                     })
 
-        return {"jours": previsions, "heures": heures}
+        result = {"jours": previsions, "heures": heures, "source": "Open-Meteo"}
+        cache.set(cache_key, result, timeout=1800)
+        return result
+
+    def _get_previsions_weatherapi(self, latitude: float, longitude: float, timezone: str, jours: int) -> dict:
+        """Utilise WeatherAPI lorsque le quota Open-Meteo est atteint."""
+        if not self.api_key:
+            raise WeatherServiceError(
+                "Le quota journalier Open-Meteo est atteint et aucune clé WeatherAPI n'est configurée."
+            )
+
+        url = f"{BASE_URL}/forecast.json"
+        params = {
+            "key": self.api_key,
+            "q": f"{latitude},{longitude}",
+            "days": jours,
+            "lang": "fr",
+        }
+        try:
+            response = requests.get(url, params=params, timeout=8)
+            # Une réponse de quota est définitive pour aujourd'hui : ne pas
+            # refaire un appel identique avec moins de jours.
+            if response.status_code == 400 and jours > 3 and not self._quota_depasse(response):
+                params["days"] = 3
+                response = requests.get(url, params=params, timeout=8)
+        except requests.exceptions.RequestException as exc:
+            raise WeatherServiceError(
+                "Le quota Open-Meteo est atteint et WeatherAPI ne répond pas. Réessaie plus tard."
+            ) from exc
+
+        if self._quota_depasse(response):
+            raise WeatherServiceError(
+                "La limite quotidienne de requêtes est atteinte chez le service météo de secours. "
+                "Réessaie demain ou configure une autre clé WeatherAPI dans le fichier .env."
+            )
+        if response.status_code != 200:
+            raise WeatherServiceError(
+                f"Le quota Open-Meteo est atteint et WeatherAPI répond ({response.status_code}) : {response.text}"
+            )
+
+        data = response.json()
+        forecast_days = data.get("forecast", {}).get("forecastday", [])
+        daily_forecasts = []
+        for day in forecast_days:
+            condition = day["day"]["condition"]
+            daily_forecasts.append({
+                "date": datetime.strptime(day["date"], "%Y-%m-%d").date(),
+                "temp_max": day["day"]["maxtemp_c"],
+                "temp_min": day["day"]["mintemp_c"],
+                "description": condition["text"],
+                "icone": "",
+                "icone_url": "https:" + condition["icon"],
+            })
+
+        hourly_forecasts = []
+        if forecast_days:
+            local_now = datetime.strptime(data["location"]["localtime"], "%Y-%m-%d %H:%M")
+            for hour in forecast_days[0].get("hour", []):
+                forecast_time = datetime.strptime(hour["time"], "%Y-%m-%d %H:%M")
+                hour_delta = forecast_time.hour - local_now.hour
+                if forecast_time.date() == local_now.date() and hour_delta >= 0 and hour_delta % 5 == 0:
+                    condition = hour.get("condition", {})
+                    hourly_forecasts.append({
+                        "heure": forecast_time.strftime("%H:%M"),
+                        "temperature": hour.get("temp_c"),
+                        "description": condition.get("text", ""),
+                        "icone": "",
+                        "icone_url": "https:" + condition.get("icon", ""),
+                    })
+
+        return {
+            "jours": daily_forecasts,
+            "heures": hourly_forecasts,
+            "source": "WeatherAPI",
+        }
 
     @staticmethod
     def _condition_open_meteo(code: int) -> tuple:
