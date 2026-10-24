@@ -1367,3 +1367,48 @@ a.pagination-link:hover {
 @media (max-width: 520px) {
   .forecast-panel .forecast-section { padding: 1.05rem .85rem 1.2rem; }
 }
+
+/* Les valeurs restent lisibles au survol ; actions réduites à leurs icônes */
+.tableau-historique td.temp-cell {
+  color: #4338ca;
+  -webkit-text-fill-color: #4338ca;
+  background: transparent;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
+}
+.icon-action {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid #dbe3ff;
+  border-radius: 11px;
+  color: #4338ca;
+  background: #eef2ff;
+  box-shadow: 0 3px 8px rgba(79,70,229,.08);
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 260ms ease, color 260ms ease, background 260ms ease, border-color 260ms ease, box-shadow 260ms ease;
+}
+.icon-action svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.action-cell form { display: flex; }
+.icon-action.btn-view:hover {
+  color: #fff;
+  background: #4f46e5;
+  border-color: #4f46e5;
+  box-shadow: 0 9px 18px rgba(79,70,229,.28);
+  transform: translateY(-2px) scale(1.06);
+}
+.icon-action.btn-delete {
+  color: #be123c;
+  background: #fff1f2;
+  border-color: #fecdd3;
+}
+.icon-action.btn-delete:hover {
+  color: #fff;
+  background: #e11d48;
+  border-color: #e11d48;
+  box-shadow: 0 9px 18px rgba(225,29,72,.26);
+  transform: translateY(-2px) scale(1.06);
+}

@@ -43,11 +43,15 @@
                                 <td>{{ r.description }}</td>
                                 <td class="date-cell">{{ r.date_recherche|date:"d/m/Y, H:i" }}</td>
                                 <td class="action-cell">
-                                    <a class="btn btn-small btn-view" href="{% url 'detail_historique' r.id %}">Voir la m&eacute;t&eacute;o</a>
+                                    <a class="icon-action btn-view" href="{% url 'detail_historique' r.id %}" aria-label="Voir la m&eacute;t&eacute;o de {{ r.ville }}" title="Voir la m&eacute;t&eacute;o">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 12s3.4-6.5 9.5-6.5 9.5 6.5 9.5 6.5-3.4 6.5-9.5 6.5S2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="2.7"/></svg>
+                                    </a>
                                     <form class="delete-form" method="post" action="{% url 'supprimer_historique' r.id %}">
                                         {% csrf_token %}
                                         <input type="hidden" name="page" value="{{ page_obj.number }}">
-                                        <button class="btn btn-small btn-delete" type="submit">Supprimer</button>
+                                        <button class="icon-action btn-delete" type="submit" aria-label="Supprimer le relev&eacute; de {{ r.ville }}" title="Supprimer">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7m-9 0 1 13h10l1-13M10 10.5v6M14 10.5v6"/></svg>
+                                        </button>
                                     </form>
                                 </td>
                             </tr>
