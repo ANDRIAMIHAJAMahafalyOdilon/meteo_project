@@ -1,0 +1,48 @@
+{% extends "meteo/base.html" %}
+
+{% block titre %}Relev&eacute; de {{ recherche.ville }} &mdash; M&eacute;t&eacute;oApp{% endblock %}
+
+{% block contenu %}
+    <header class="page-heading detail-heading">
+        <span class="eyebrow">Archive m&eacute;t&eacute;o &middot; {{ recherche.date_recherche|date:"d/m/Y, H:i" }}</span>
+        <h1>{{ recherche.ville }}{% if recherche.pays %}, {{ recherche.pays }}{% endif %}</h1>
+        <p class="page-subtitle">Conditions enregistr&eacute;es lors de cette recherche.</p>
+    </header>
+
+    <section class="snapshot-card">
+        <div class="snapshot-topline">
+            <span class="snapshot-label">Relev&eacute; sauvegard&eacute;</span>
+            <time datetime="{{ recherche.date_recherche|date:'c' }}">{{ recherche.date_recherche|date:"l d F Y, H:i" }}</time>
+        </div>
+        <div class="snapshot-weather">
+            <div class="snapshot-icon" aria-hidden="true">
+                {% if recherche.icone_url %}
+                    <img src="{{ recherche.icone_url }}" alt="">
+                {% else %}
+                    <span>&#9729;</span>
+                {% endif %}
+            </div>
+            <div>
+                <p class="snapshot-temperature">{{ recherche.temperature|floatformat:1 }}<span>&deg;C</span></p>
+                <p class="snapshot-condition">{{ recherche.description }}</p>
+            </div>
+        </div>
+        <div class="snapshot-stats">
+            <div class="snapshot-stat">
+                <span class="stat-symbol" aria-hidden="true">&#9675;</span>
+                <span class="stat-caption">Humidit&eacute;</span>
+                <strong>{{ recherche.humidite }}%</strong>
+            </div>
+            <div class="snapshot-stat">
+                <span class="stat-symbol" aria-hidden="true">&#8599;</span>
+                <span class="stat-caption">Vent</span>
+                <strong>{{ recherche.vent|floatformat:1 }} km/h</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="detail-actions">
+        <a class="btn btn-primary" href="{% url 'historique' %}">Retour &agrave; l&#39;historique</a>
+        <a class="btn btn-outline" href="{% url 'index' %}">Nouvelle recherche</a>
+    </div>
+{% endblock %}

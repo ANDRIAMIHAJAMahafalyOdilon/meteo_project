@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'meteo/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'meteo/css/style.css' %}?v=20261024-10">
 </head>
 <body>
     <nav class="navbar">
@@ -30,6 +30,9 @@
         {% block contenu %}{% endblock %}
     </main>
 
-
+    <footer class="site-footer">
+        <span class="footer-mark" aria-hidden="true">☀</span>
+        <span>Prévisions météo avec les données <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></span>
+    </footer>
 </body>
 </html>

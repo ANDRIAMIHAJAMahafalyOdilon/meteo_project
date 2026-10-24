@@ -36,34 +36,60 @@
                 <h2>{{ meteo.ville }}</h2>
                 <span class="badge badge-secondary">{{ meteo.pays }}</span>
             </div>
-
-            <div class="meteo-icon-wrap">
-                <img src="{{ meteo.icone_url }}" alt="{{ meteo.description }}">
+            <div class="meteo-actuel">
+                <div class="meteo-icon-wrap">
+                    {% if meteo.icone_url %}
+                        <img src="{{ meteo.icone_url }}" alt="{{ meteo.description }}">
+                    {% else %}
+                        <span class="icone-current" aria-hidden="true">{{ meteo.icone }}</span>
+                    {% endif %}
+                </div>
+                <div class="meteo-resume">
+                    <p class="temperature">{{ meteo.temperature }}°<small> C</small></p>
+                    <p class="description">{{ meteo.description }}</p>
+                </div>
+                <ul class="details">
+                    <li>Humidité <strong>{{ meteo.humidite }} %</strong></li>
+                    <li>Vent <strong>{{ meteo.vent }} km/h</strong></li>
+                </ul>
             </div>
-
-            <p class="temperature">{{ meteo.temperature }}°<small style="font-size:1.5rem;font-weight:600;">C</small></p>
-            <p class="description">{{ meteo.description }}</p>
-
-            <ul class="details">
-                <li>💧 Humidité &nbsp;<strong>{{ meteo.humidite }} %</strong></li>
-                <li>💨 Vent &nbsp;<strong>{{ meteo.vent }} km/h</strong></li>
-            </ul>
         </section>
     {% endif %}
 
-    {% if previsions %}
-        <section class="previsions">
-            <div class="section-label">Prévisions sur 3 jours</div>
-            <div class="previsions-liste">
-                {% for jour in previsions %}
-                    <div class="prevision-jour">
-                        <p>{{ jour.date }}</p>
-                        <img src="{{ jour.icone_url }}" alt="{{ jour.description }}">
-                        <p class="temp-range">{{ jour.temp_min }}° / {{ jour.temp_max }}°</p>
-                        <p class="petit">{{ jour.description }}</p>
+    {% if previsions_horaires or previsions %}
+        <section class="forecast-panel" aria-label="Pr&eacute;visions m&eacute;t&eacute;o">
+            {% if previsions_horaires %}
+                <div class="previsions horaires forecast-section">
+                    <div class="section-label">Aujourd'hui &middot; &eacute;volution toutes les 5 heures</div>
+                    <div class="horaires-liste">
+                        {% for heure in previsions_horaires %}
+                            <article class="prevision-heure">
+                                <p class="heure-label">{{ heure.heure }}</p>
+                                <span class="icone-forecast" aria-hidden="true">{{ heure.icone }}</span>
+                                <p class="temperature-heure">{{ heure.temperature }}&deg;</p>
+                                <p class="petit">{{ heure.description }}</p>
+                            </article>
+                        {% endfor %}
                     </div>
-                {% endfor %}
-            </div>
+                </div>
+            {% endif %}
+
+            {% if previsions %}
+                <div class="previsions weekly forecast-section">
+                    <div class="section-label">Pr&eacute;visions sur 7 jours</div>
+                    <div class="previsions-liste">
+                        {% for jour in previsions %}
+                            <div class="prevision-jour">
+                                <p>{{ jour.date|date:"D d/m" }}</p>
+                                <span class="icone-forecast" aria-hidden="true">{{ jour.icone }}</span>
+                                <p class="temp-range">{{ jour.temp_min }}&deg; / {{ jour.temp_max }}&deg;</p>
+                                <p class="petit">{{ jour.description }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
         </section>
     {% endif %}
+
 {% endblock %}

@@ -1,4 +1,8 @@
-from django.shortcuts import render
+from django.shortcuts import get_object_or_404, render
+from django.core.paginator import Paginator
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+from django.views.decorators.http import require_POST
 from .models import RechercheHistorique
 from .services import WeatherService, VilleIntrouvableError, WeatherServiceError
 
@@ -17,7 +21,9 @@ def index(request):
         try:
             service = WeatherService()
             meteo = service.get_meteo_actuelle(ville)
-            previsions = service.get_previsions(ville, jours=3)
+            previsions = service.get_previsions(
+                meteo["latitude"], meteo["longitude"], meteo["timezone"], jours=7
+            )
 
             # Sauvegarde dans l'historique (SQLite)
             RechercheHistorique.objects.create(
@@ -31,7 +37,8 @@ def index(request):
             )
 
             contexte["meteo"] = meteo
-            contexte["previsions"] = previsions
+            contexte["previsions"] = previsions["jours"]
+            contexte["previsions_horaires"] = previsions["heures"]
 
         except VilleIntrouvableError:
             contexte["erreur"] = f"Ville introuvable : « {ville} ». Vérifie l'orthographe."
@@ -43,5 +50,28 @@ def index(request):
 
 def historique(request):
     """Affiche l'historique des recherches sauvegardées en base."""
-    recherches = RechercheHistorique.objects.all()[:50]
-    return render(request, "meteo/historique.html", {"recherches": recherches})
+    page_obj = Paginator(RechercheHistorique.objects.all(), 10).get_page(
+        request.GET.get("page")
+    )
+    return render(request, "meteo/historique.html", {
+        "page_obj": page_obj,
+        "recherches": page_obj.object_list,
+    })
+
+
+def detail_historique(request, recherche_id):
+    """Affiche les conditions météo enregistrées lors d'une recherche passée."""
+    recherche = get_object_or_404(RechercheHistorique, pk=recherche_id)
+    return render(request, "meteo/detail_historique.html", {"recherche": recherche})
+
+
+@require_POST
+def supprimer_historique(request, recherche_id):
+    """Supprime une recherche sélectionnée depuis la page d'historique."""
+    recherche = get_object_or_404(RechercheHistorique, pk=recherche_id)
+    recherche.delete()
+    try:
+        page = max(1, int(request.POST.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    return HttpResponseRedirect(f"{reverse('historique')}?page={page}")

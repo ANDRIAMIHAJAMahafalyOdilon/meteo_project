@@ -1,51 +1,124 @@
 {% extends "meteo/base.html" %}
 
-{% block titre %}Historique — MétéoApp{% endblock %}
+{% block titre %}Historique &mdash; M&eacute;t&eacute;oApp{% endblock %}
 
 {% block contenu %}
-    <h1>Historique des recherches</h1>
-    <p class="page-subtitle">Vos {{ recherches|length }} dernières recherches météo</p>
+    <header class="page-heading">
+        <span class="eyebrow">Votre espace m&eacute;t&eacute;o</span>
+        <h1>Historique des recherches</h1>
+        <p class="page-subtitle">Retrouvez les conditions enregistr&eacute;es &agrave; chaque recherche.</p>
+    </header>
 
     {% if recherches %}
-        <div class="historique-header">
-            <span class="section-label" style="margin:0;flex:unset;">Résultats récents</span>
-            <span class="record-count">{{ recherches|length }} entrée{% if recherches|length > 1 %}s{% endif %}</span>
-        </div>
+        <section class="history-panel">
+            <div class="historique-header">
+                <div>
+                    <span class="section-kicker">Recherches r&eacute;centes</span>
+                    <h2 class="history-title">Vos relev&eacute;s</h2>
+                </div>
+                <span class="record-count">{{ page_obj.paginator.count }} relev&eacute;{% if page_obj.paginator.count > 1 %}s{% endif %}</span>
+            </div>
 
-        <div class="table-wrapper">
-            <table class="tableau-historique">
-                <thead>
-                    <tr>
-                        <th>Ville</th>
-                        <th>Pays</th>
-                        <th>Temp.</th>
-                        <th>Conditions</th>
-                        <th>Date</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for r in recherches %}
+            <div class="table-wrapper">
+                <table class="tableau-historique">
+                    <thead>
                         <tr>
-                            <td>
-                                <strong>{{ r.ville }}</strong>
-                            </td>
-                            <td>{{ r.pays }}</td>
-                            <td class="temp-cell">{{ r.temperature }} °C</td>
-                            <td>{{ r.description }}</td>
-                            <td class="date-cell">{{ r.date_recherche|date:"d/m/Y H:i" }}</td>
+                            <th>Ville</th>
+                            <th>Temp&eacute;rature</th>
+                            <th>Conditions</th>
+                            <th>Date et heure</th>
+                            <th class="actions-heading">Actions</th>
                         </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody>
+                        {% for r in recherches %}
+                            <tr>
+                                <td>
+                                    <a class="history-city" href="{% url 'detail_historique' r.id %}">
+                                        <strong>{{ r.ville }}</strong>
+                                        <span>{{ r.pays }}</span>
+                                    </a>
+                                </td>
+                                <td class="temp-cell">{{ r.temperature|floatformat:1 }}&deg;</td>
+                                <td>{{ r.description }}</td>
+                                <td class="date-cell">{{ r.date_recherche|date:"d/m/Y, H:i" }}</td>
+                                <td class="action-cell">
+                                    <a class="btn btn-small btn-view" href="{% url 'detail_historique' r.id %}">Voir la m&eacute;t&eacute;o</a>
+                                    <form class="delete-form" method="post" action="{% url 'supprimer_historique' r.id %}">
+                                        {% csrf_token %}
+                                        <input type="hidden" name="page" value="{{ page_obj.number }}">
+                                        <button class="btn btn-small btn-delete" type="submit">Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if page_obj.paginator.num_pages > 1 %}
+                <nav class="pagination" aria-label="Pagination de l’historique">
+                    {% if page_obj.has_previous %}
+                        <a class="pagination-link" href="?page={{ page_obj.previous_page_number }}">&larr; Pr&eacute;c&eacute;dent</a>
+                    {% else %}
+                        <span class="pagination-link is-disabled">&larr; Pr&eacute;c&eacute;dent</span>
+                    {% endif %}
+                    <span class="pagination-status">Page <strong>{{ page_obj.number }}</strong> sur {{ page_obj.paginator.num_pages }}</span>
+                    {% if page_obj.has_next %}
+                        <a class="pagination-link" href="?page={{ page_obj.next_page_number }}">Suivant &rarr;</a>
+                    {% else %}
+                        <span class="pagination-link is-disabled">Suivant &rarr;</span>
+                    {% endif %}
+                </nav>
+            {% endif %}
+        </section>
     {% else %}
-        <div class="empty-state">
-            <span class="empty-state-icon">🌤️</span>
-            <h2>Aucune recherche pour le moment</h2>
-            <p>Lancez votre première recherche pour voir l'historique apparaître ici.</p>
-            <a href="{% url 'index' %}" class="btn btn-primary">
-                🔍 Rechercher une ville
-            </a>
-        </div>
+        <section class="empty-state">
+            <span class="empty-state-icon" aria-hidden="true">&#9729;</span>
+            <h2>Aucune recherche enregistr&eacute;e</h2>
+            <p>Effectuez une recherche m&eacute;t&eacute;o : elle appara&icirc;tra ici avec son relev&eacute; d&eacute;taill&eacute;.</p>
+            <a href="{% url 'index' %}" class="btn btn-primary">Rechercher une ville</a>
+        </section>
     {% endif %}
+
+    <dialog class="confirmation-modal" id="delete-confirmation" aria-labelledby="delete-title">
+        <div class="modal-content">
+            <span class="modal-icon" aria-hidden="true">!</span>
+            <h2 id="delete-title">Supprimer ce relev&eacute; ?</h2>
+            <p>Cette recherche sera retir&eacute;e de votre historique.</p>
+            <div class="modal-actions">
+                <button class="btn btn-outline" type="button" data-cancel-delete>Annuler</button>
+                <button class="btn btn-delete-confirm" type="button" data-confirm-delete>Oui, supprimer</button>
+            </div>
+        </div>
+    </dialog>
+    <script>
+        (() => {
+            const dialog = document.getElementById("delete-confirmation");
+            if (!dialog) return;
+            let pendingForm = null;
+            document.querySelectorAll(".delete-form").forEach((form) => {
+                form.addEventListener("submit", (event) => {
+                    event.preventDefault();
+                    pendingForm = form;
+                    dialog.showModal();
+                });
+            });
+            dialog.querySelector("[data-cancel-delete]").addEventListener("click", () => {
+                pendingForm = null;
+                dialog.close();
+            });
+            dialog.querySelector("[data-confirm-delete]").addEventListener("click", () => {
+                if (!pendingForm) return;
+                const form = pendingForm;
+                pendingForm = null;
+                form.submit();
+            });
+            dialog.addEventListener("click", (event) => {
+                if (event.target === dialog) {
+                    pendingForm = null;
+                    dialog.close();
+                }
+            });
+        })();
+    </script>
 {% endblock %}
